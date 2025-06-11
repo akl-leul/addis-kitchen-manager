@@ -12,7 +12,7 @@ import { Link } from "react-router-dom";
 
 const Menu = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [showVegetarianOnly, setShowVegetarianOnly] = useState(false);
   const [showSpicyOnly, setShowSpicyOnly] = useState(false);
 
@@ -73,7 +73,7 @@ const Menu = () => {
               variant="outline"
               onClick={() => {
                 setSearchTerm('');
-                setSelectedCategory('');
+                setSelectedCategory('all');
                 setShowVegetarianOnly(false);
                 setShowSpicyOnly(false);
               }}

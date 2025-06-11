@@ -52,7 +52,7 @@ const MenuSearch: React.FC<MenuSearchProps> = ({
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Categories</SelectItem>
+            <SelectItem value="all">All Categories</SelectItem>
             {categories.map(category => (
               <SelectItem key={category.id} value={category.id}>
                 {category.name}
@@ -84,13 +84,13 @@ const MenuSearch: React.FC<MenuSearchProps> = ({
         </div>
       </div>
       
-      {(searchTerm || selectedCategory || showVegetarianOnly || showSpicyOnly) && (
+      {(searchTerm || selectedCategory !== 'all' || showVegetarianOnly || showSpicyOnly) && (
         <Button
           variant="outline"
           size="sm"
           onClick={() => {
             onSearchChange('');
-            onCategoryChange('');
+            onCategoryChange('all');
             onVegetarianChange(false);
             onSpicyChange(false);
           }}

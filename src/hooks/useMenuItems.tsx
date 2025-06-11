@@ -27,7 +27,7 @@ interface MenuCategory {
   display_order: number;
 }
 
-export const useMenuItems = (searchTerm = '', selectedCategory = '', showVegetarianOnly = false, showSpicyOnly = false) => {
+export const useMenuItems = (searchTerm = '', selectedCategory = 'all', showVegetarianOnly = false, showSpicyOnly = false) => {
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({
     queryKey: ['menu-categories'],
     queryFn: async () => {
@@ -69,7 +69,7 @@ export const useMenuItems = (searchTerm = '', selectedCategory = '', showVegetar
         ingredient.toLowerCase().includes(searchTerm.toLowerCase())
       );
 
-    const matchesCategory = !selectedCategory || item.category_id === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || item.category_id === selectedCategory;
     const matchesVegetarian = !showVegetarianOnly || item.is_vegetarian;
     const matchesSpicy = !showSpicyOnly || item.is_spicy;
 
