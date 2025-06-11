@@ -184,7 +184,7 @@ const AdminDashboard = () => {
 
   // Order mutations
   const updateOrderMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status }: { id: string; status: "pending" | "confirmed" | "preparing" | "ready" | "delivered" | "cancelled" }) => {
       const { error } = await supabase
         .from('orders')
         .update({ status })
@@ -526,7 +526,7 @@ const AdminDashboard = () => {
                         </TableCell>
                         <TableCell className="font-bold">${order.total_amount}</TableCell>
                         <TableCell>
-                          <Badge variant={order.status === "completed" ? "default" : "secondary"}>
+                          <Badge variant={order.status === "delivered" ? "default" : "secondary"}>
                             {order.status}
                           </Badge>
                         </TableCell>
@@ -535,7 +535,7 @@ const AdminDashboard = () => {
                           <div className="flex items-center space-x-2">
                             <Select 
                               value={order.status} 
-                              onValueChange={(value) => updateOrderMutation.mutate({ id: order.id, status: value })}
+                              onValueChange={(value: "pending" | "confirmed" | "preparing" | "ready" | "delivered" | "cancelled") => updateOrderMutation.mutate({ id: order.id, status: value })}
                             >
                               <SelectTrigger className="w-32">
                                 <SelectValue />
