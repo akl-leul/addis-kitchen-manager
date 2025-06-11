@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,7 @@ import {
 } from "@/components/ui/table";
 
 const AdminDashboard = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const queryClient = useQueryClient();
   
   const [newMenuItem, setNewMenuItem] = useState({
@@ -43,23 +42,33 @@ const AdminDashboard = () => {
 
   const [editingItem, setEditingItem] = useState<any>(null);
 
+  console.log("AdminDashboard - user:", user);
+  console.log("AdminDashboard - loading:", loading);
+
   // Fetch menu categories
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [], isLoading: categoriesLoading, error: categoriesError } = useQuery({
     queryKey: ['admin-categories'],
     queryFn: async () => {
+      console.log("Fetching categories...");
       const { data, error } = await supabase
         .from('menu_categories')
         .select('*')
         .order('display_order');
+      
+      console.log("Categories data:", data);
+      console.log("Categories error:", error);
+      
       if (error) throw error;
-      return data;
+      return data || [];
     },
+    enabled: !!user, // Only fetch when user is authenticated
   });
 
   // Fetch menu items
-  const { data: menuItems = [] } = useQuery({
+  const { data: menuItems = [], isLoading: menuItemsLoading, error: menuItemsError } = useQuery({
     queryKey: ['admin-menu-items'],
     queryFn: async () => {
+      console.log("Fetching menu items...");
       const { data, error } = await supabase
         .from('menu_items')
         .select(`
@@ -67,15 +76,21 @@ const AdminDashboard = () => {
           menu_categories (name)
         `)
         .order('display_order');
+      
+      console.log("Menu items data:", data);
+      console.log("Menu items error:", error);
+      
       if (error) throw error;
-      return data;
+      return data || [];
     },
+    enabled: !!user,
   });
 
   // Fetch orders
-  const { data: orders = [] } = useQuery({
+  const { data: orders = [], isLoading: ordersLoading, error: ordersError } = useQuery({
     queryKey: ['admin-orders'],
     queryFn: async () => {
+      console.log("Fetching orders...");
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -86,36 +101,60 @@ const AdminDashboard = () => {
           )
         `)
         .order('created_at', { ascending: false });
+      
+      console.log("Orders data:", data);
+      console.log("Orders error:", error);
+      
       if (error) throw error;
-      return data;
+      return data || [];
     },
+    enabled: !!user,
   });
 
   // Fetch reservations
-  const { data: reservations = [] } = useQuery({
+  const { data: reservations = [], isLoading: reservationsLoading, error: reservationsError } = useQuery({
     queryKey: ['admin-reservations'],
     queryFn: async () => {
+      console.log("Fetching reservations...");
       const { data, error } = await supabase
         .from('table_reservations')
         .select('*')
         .order('reservation_date', { ascending: false });
+      
+      console.log("Reservations data:", data);
+      console.log("Reservations error:", error);
+      
       if (error) throw error;
-      return data;
+      return data || [];
     },
+    enabled: !!user,
   });
 
   // Fetch messages
-  const { data: messages = [] } = useQuery({
+  const { data: messages = [], isLoading: messagesLoading, error: messagesError } = useQuery({
     queryKey: ['admin-messages'],
     queryFn: async () => {
+      console.log("Fetching messages...");
       const { data, error } = await supabase
         .from('contact_messages')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      console.log("Messages data:", data);
+      console.log("Messages error:", error);
+      
       if (error) throw error;
-      return data;
+      return data || [];
     },
+    enabled: !!user,
   });
+
+  // Log any errors
+  if (categoriesError) console.error("Categories error:", categoriesError);
+  if (menuItemsError) console.error("Menu items error:", menuItemsError);
+  if (ordersError) console.error("Orders error:", ordersError);
+  if (reservationsError) console.error("Reservations error:", reservationsError);
+  if (messagesError) console.error("Messages error:", messagesError);
 
   // Menu item mutations
   const addMenuItemMutation = useMutation({
@@ -270,8 +309,12 @@ const AdminDashboard = () => {
   });
 
   const handleLogout = async () => {
-    await signOut();
-    toast.success("Logged out successfully");
+    try {
+      await signOut();
+      toast.success("Logged out successfully");
+    } catch (error) {
+      toast.error("Error logging out");
+    }
   };
 
   const addMenuItem = () => {
@@ -288,15 +331,33 @@ const AdminDashboard = () => {
     }
   };
 
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect if not authenticated
   if (!user) {
     return <Navigate to="/admin" replace />;
   }
+
+  const isDataLoading = categoriesLoading || menuItemsLoading || ordersLoading || reservationsLoading || messagesLoading;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">Admin Dashboard</h1>
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900">Admin Dashboard</h1>
+            <p className="text-gray-600">Welcome, {user.email}</p>
+          </div>
           <Button 
             onClick={handleLogout} 
             variant="outline" 
@@ -307,12 +368,19 @@ const AdminDashboard = () => {
           </Button>
         </div>
 
+        {isDataLoading && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-orange-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading dashboard data...</p>
+          </div>
+        )}
+
         <Tabs defaultValue="menu" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="menu">Menu Management</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="reservations">Reservations</TabsTrigger>
-            <TabsTrigger value="messages">Messages</TabsTrigger>
+            <TabsTrigger value="menu">Menu Management ({menuItems.length})</TabsTrigger>
+            <TabsTrigger value="orders">Orders ({orders.length})</TabsTrigger>
+            <TabsTrigger value="reservations">Reservations ({reservations.length})</TabsTrigger>
+            <TabsTrigger value="messages">Messages ({messages.filter(m => !m.is_read).length} unread)</TabsTrigger>
           </TabsList>
 
           {/* Menu Management */}

@@ -1,33 +1,53 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 const AdminLogin = () => {
+  const { user, signIn, loading } = useAuth();
   const [credentials, setCredentials] = useState({
-    username: "",
+    email: "",
     password: ""
   });
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLogging, setIsLogging] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLogging(true);
     
-    // Simple hardcoded authentication for demo
-    if (credentials.username === "admin" && credentials.password === "admin123") {
-      localStorage.setItem("adminLoggedIn", "true");
-      setIsLoggedIn(true);
-      toast.success("Login successful!");
-    } else {
-      toast.error("Invalid credentials. Use username: admin, password: admin123");
+    try {
+      const { error } = await signIn(credentials.email, credentials.password);
+      if (error) {
+        toast.error("Login failed: " + error.message);
+      } else {
+        toast.success("Login successful!");
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsLogging(false);
     }
   };
 
-  if (isLoggedIn || localStorage.getItem("adminLoggedIn") === "true") {
+  // Show loading while checking auth state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect if already authenticated
+  if (user) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
@@ -42,11 +62,12 @@ const AdminLogin = () => {
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="username"
-                  value={credentials.username}
-                  onChange={(e) => setCredentials({...credentials, username: e.target.value})}
+                  id="email"
+                  type="email"
+                  value={credentials.email}
+                  onChange={(e) => setCredentials({...credentials, email: e.target.value})}
                   required
                 />
               </div>
@@ -62,14 +83,18 @@ const AdminLogin = () => {
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700">
-                Login
+              <Button 
+                type="submit" 
+                className="w-full bg-orange-600 hover:bg-orange-700"
+                disabled={isLogging}
+              >
+                {isLogging ? "Logging in..." : "Login"}
               </Button>
             </form>
             
             <div className="mt-4 p-4 bg-gray-100 rounded-lg">
               <p className="text-sm text-gray-600">Demo Credentials:</p>
-              <p className="text-sm font-mono">Username: admin</p>
+              <p className="text-sm font-mono">Email: admin@restaurant.com</p>
               <p className="text-sm font-mono">Password: admin123</p>
             </div>
           </CardContent>
