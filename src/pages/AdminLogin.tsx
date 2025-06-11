@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,18 +7,31 @@ import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
+const DEMO_EMAIL = "admin@restaurant.com";
+const DEMO_PASSWORD = "admin123";
+
 const AdminLogin = () => {
-  const { user, signIn, loading } = useAuth();
+  const { user, signIn: originalSignIn, loading } = useAuth();
   const [credentials, setCredentials] = useState({
     email: "",
     password: ""
   });
   const [isLogging, setIsLogging] = useState(false);
+  const [demoUser, setDemoUser] = useState<any>(null);
+
+  // Custom signIn to allow demo credentials
+  const signIn = async (email: string, password: string) => {
+    if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
+      setDemoUser({ email });
+      return { error: null, user: { email } };
+    }
+    return await originalSignIn(email, password);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLogging(true);
-    
+
     try {
       const { error } = await signIn(credentials.email, credentials.password);
       if (error) {
@@ -46,9 +58,9 @@ const AdminLogin = () => {
     );
   }
 
-  // Redirect if already authenticated
-  if (user) {
-    return <Navigate to="/admin/dashboard" replace />;
+  // Redirect if already authenticated (real or demo)
+  if (user || demoUser) {
+    return <Navigate to="/admindashboard" replace />;
   }
 
   return (
@@ -67,35 +79,32 @@ const AdminLogin = () => {
                   id="email"
                   type="email"
                   value={credentials.email}
-                  onChange={(e) => setCredentials({...credentials, email: e.target.value})}
+                  onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
                   required
                 />
               </div>
-              
               <div>
                 <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   value={credentials.password}
-                  onChange={(e) => setCredentials({...credentials, password: e.target.value})}
+                  onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
                   required
                 />
               </div>
-
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-orange-600 hover:bg-orange-700"
                 disabled={isLogging}
               >
                 {isLogging ? "Logging in..." : "Login"}
               </Button>
             </form>
-            
             <div className="mt-4 p-4 bg-gray-100 rounded-lg">
               <p className="text-sm text-gray-600">Demo Credentials:</p>
-              <p className="text-sm font-mono">Email: admin@restaurant.com</p>
-              <p className="text-sm font-mono">Password: admin123</p>
+              <p className="text-sm font-mono">Email: {DEMO_EMAIL}</p>
+              <p className="text-sm font-mono">Password: {DEMO_PASSWORD}</p>
             </div>
           </CardContent>
         </Card>
