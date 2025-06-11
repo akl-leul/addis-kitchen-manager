@@ -5,184 +5,215 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const BookTable = () => {
-  const [reservationData, setReservationData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    guests: "",
-    date: undefined as Date | undefined,
-    time: "",
+  const { user } = useAuth();
+  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [formData, setFormData] = useState({
+    guestName: "",
+    guestEmail: "",
+    guestPhone: "",
+    partySize: "",
+    reservationTime: "",
     specialRequests: ""
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const timeSlots = [
-    "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM",
-    "2:00 PM", "2:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM",
-    "7:00 PM", "7:30 PM", "8:00 PM", "8:30 PM", "9:00 PM", "9:30 PM"
+    "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
+    "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
+    "17:00", "17:30", "18:00", "18:30", "19:00", "19:30",
+    "20:00", "20:30", "21:00", "21:30"
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Reservation submitted:", reservationData);
-    toast.success("Table reservation requested! We'll confirm your booking shortly.");
     
-    // Reset form
-    setReservationData({
-      name: "",
-      email: "",
-      phone: "",
-      guests: "",
-      date: undefined,
-      time: "",
-      specialRequests: ""
-    });
+    if (!selectedDate) {
+      toast.error("Please select a date for your reservation.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from('table_reservations')
+        .insert({
+          user_id: user?.id || null,
+          guest_name: formData.guestName,
+          guest_email: formData.guestEmail,
+          guest_phone: formData.guestPhone || null,
+          party_size: parseInt(formData.partySize),
+          reservation_date: selectedDate.toISOString().split('T')[0],
+          reservation_time: formData.reservationTime,
+          special_requests: formData.specialRequests || null,
+          status: 'confirmed'
+        });
+
+      if (error) throw error;
+
+      toast.success("Table reservation confirmed! We look forward to serving you.");
+      
+      // Reset form
+      setSelectedDate(undefined);
+      setFormData({
+        guestName: "",
+        guestEmail: "",
+        guestPhone: "",
+        partySize: "",
+        reservationTime: "",
+        specialRequests: ""
+      });
+
+    } catch (error: any) {
+      console.error('Reservation error:', error);
+      toast.error("Failed to book table. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-8">
+        <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Reserve a Table</h1>
-          <p className="text-xl text-gray-600">Book your authentic Ethiopian dining experience</p>
+          <p className="text-xl text-gray-600">Book your dining experience at Addis Kitchen</p>
         </div>
 
-        <div className="max-w-2xl mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle>Table Reservation</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Reservation Form */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Reservation Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <Label htmlFor="name">Full Name</Label>
+                    <Label htmlFor="guestName">Full Name</Label>
                     <Input
-                      id="name"
-                      value={reservationData.name}
-                      onChange={(e) => setReservationData({...reservationData, name: e.target.value})}
+                      id="guestName"
+                      value={formData.guestName}
+                      onChange={(e) => setFormData({...formData, guestName: e.target.value})}
                       required
                     />
                   </div>
                   
                   <div>
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="guestEmail">Email</Label>
                     <Input
-                      id="email"
+                      id="guestEmail"
                       type="email"
-                      value={reservationData.email}
-                      onChange={(e) => setReservationData({...reservationData, email: e.target.value})}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={reservationData.phone}
-                      onChange={(e) => setReservationData({...reservationData, phone: e.target.value})}
+                      value={formData.guestEmail}
+                      onChange={(e) => setFormData({...formData, guestEmail: e.target.value})}
                       required
                     />
                   </div>
                   
                   <div>
-                    <Label htmlFor="guests">Number of Guests</Label>
-                    <Select value={reservationData.guests} onValueChange={(value) => setReservationData({...reservationData, guests: value})}>
+                    <Label htmlFor="guestPhone">Phone Number</Label>
+                    <Input
+                      id="guestPhone"
+                      type="tel"
+                      value={formData.guestPhone}
+                      onChange={(e) => setFormData({...formData, guestPhone: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="partySize">Party Size</Label>
+                    <Select value={formData.partySize} onValueChange={(value) => setFormData({...formData, partySize: value})}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select number of guests" />
+                        <SelectValue placeholder="Select party size" />
                       </SelectTrigger>
                       <SelectContent>
-                        {[1,2,3,4,5,6,7,8,9,10].map((num) => (
-                          <SelectItem key={num} value={num.toString()}>{num} {num === 1 ? 'Guest' : 'Guests'}</SelectItem>
+                        {[1,2,3,4,5,6,7,8,9,10].map(size => (
+                          <SelectItem key={size} value={size.toString()}>
+                            {size} {size === 1 ? 'person' : 'people'}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Preferred Date</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {reservationData.date ? format(reservationData.date, "PPP") : "Pick a date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={reservationData.date}
-                          onSelect={(date) => setReservationData({...reservationData, date})}
-                          disabled={(date) => date < new Date()}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
                   
                   <div>
-                    <Label>Preferred Time</Label>
-                    <Select value={reservationData.time} onValueChange={(value) => setReservationData({...reservationData, time: value})}>
+                    <Label htmlFor="reservationTime">Preferred Time</Label>
+                    <Select value={formData.reservationTime} onValueChange={(value) => setFormData({...formData, reservationTime: value})}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select time" />
                       </SelectTrigger>
                       <SelectContent>
-                        {timeSlots.map((time) => (
-                          <SelectItem key={time} value={time}>{time}</SelectItem>
+                        {timeSlots.map(time => (
+                          <SelectItem key={time} value={time}>
+                            {time}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  <div>
+                    <Label htmlFor="specialRequests">Special Requests (Optional)</Label>
+                    <Textarea
+                      id="specialRequests"
+                      value={formData.specialRequests}
+                      onChange={(e) => setFormData({...formData, specialRequests: e.target.value})}
+                      placeholder="Any special dietary requirements or requests?"
+                    />
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-orange-600 hover:bg-orange-700"
+                    disabled={isSubmitting || !selectedDate || !formData.partySize || !formData.reservationTime}
+                  >
+                    {isSubmitting ? "Booking..." : "Reserve Table"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Calendar */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Select Date</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  disabled={(date) => date < new Date() || date < new Date("1900-01-01")}
+                  className="rounded-md border"
+                />
+                
+                {selectedDate && (
+                  <div className="mt-4 p-4 bg-orange-50 rounded-lg">
+                    <p className="text-sm text-orange-800">
+                      <strong>Selected Date:</strong> {selectedDate.toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="font-semibold mb-2">Restaurant Hours</h3>
+                  <div className="text-sm text-gray-600">
+                    <p>Monday - Thursday: 11:00 AM - 10:00 PM</p>
+                    <p>Friday - Saturday: 11:00 AM - 11:00 PM</p>
+                    <p>Sunday: 12:00 PM - 9:00 PM</p>
+                  </div>
                 </div>
-
-                <div>
-                  <Label htmlFor="requests">Special Requests (Optional)</Label>
-                  <Textarea
-                    id="requests"
-                    value={reservationData.specialRequests}
-                    onChange={(e) => setReservationData({...reservationData, specialRequests: e.target.value})}
-                    placeholder="Any special occasions, dietary restrictions, or seating preferences?"
-                  />
-                </div>
-
-                <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700 text-white">
-                  Request Reservation
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Restaurant Info */}
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle>Reservation Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 text-sm text-gray-600">
-                <p>• Reservations are subject to availability and will be confirmed by phone or email</p>
-                <p>• Please arrive within 15 minutes of your reservation time</p>
-                <p>• For parties of 8 or more, please call us directly at (555) 123-4567</p>
-                <p>• We offer traditional Ethiopian coffee ceremony - please mention if interested</p>
-                <p>• Vegetarian and vegan options available upon request</p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

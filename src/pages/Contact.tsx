@@ -6,36 +6,59 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MapPin, Phone, Clock, Mail } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const Contact = () => {
-  const [contactForm, setContactForm] = useState({
+  const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     subject: "",
     message: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Contact form submitted:", contactForm);
-    toast.success("Message sent successfully! We'll get back to you soon.");
-    
-    // Reset form
-    setContactForm({
-      name: "",
-      email: "",
-      subject: "",
-      message: ""
-    });
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from('contact_messages')
+        .insert({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone || null,
+          subject: formData.subject || null,
+          message: formData.message
+        });
+
+      if (error) throw error;
+
+      toast.success("Message sent successfully! We'll get back to you soon.");
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        subject: "",
+        message: ""
+      });
+    } catch (error: any) {
+      console.error('Contact form error:', error);
+      toast.error("Failed to send message. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-8">
+        <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Contact Us</h1>
-          <p className="text-xl text-gray-600">We'd love to hear from you</p>
+          <p className="text-xl text-gray-600">We'd love to hear from you! Get in touch with us.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -47,11 +70,11 @@ const Contact = () => {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <Label htmlFor="name">Name</Label>
+                  <Label htmlFor="name">Full Name</Label>
                   <Input
                     id="name"
-                    value={contactForm.name}
-                    onChange={(e) => setContactForm({...contactForm, name: e.target.value})}
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
                     required
                   />
                 </div>
@@ -61,19 +84,28 @@ const Contact = () => {
                   <Input
                     id="email"
                     type="email"
-                    value={contactForm.email}
-                    onChange={(e) => setContactForm({...contactForm, email: e.target.value})}
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
                     required
                   />
                 </div>
                 
                 <div>
-                  <Label htmlFor="subject">Subject</Label>
+                  <Label htmlFor="phone">Phone Number (Optional)</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="subject">Subject (Optional)</Label>
                   <Input
                     id="subject"
-                    value={contactForm.subject}
-                    onChange={(e) => setContactForm({...contactForm, subject: e.target.value})}
-                    required
+                    value={formData.subject}
+                    onChange={(e) => setFormData({...formData, subject: e.target.value})}
                   />
                 </div>
                 
@@ -81,15 +113,19 @@ const Contact = () => {
                   <Label htmlFor="message">Message</Label>
                   <Textarea
                     id="message"
-                    value={contactForm.message}
-                    onChange={(e) => setContactForm({...contactForm, message: e.target.value})}
-                    rows={5}
+                    value={formData.message}
+                    onChange={(e) => setFormData({...formData, message: e.target.value})}
                     required
+                    rows={5}
                   />
                 </div>
 
-                <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700">
-                  Send Message
+                <Button 
+                  type="submit" 
+                  className="w-full bg-orange-600 hover:bg-orange-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Sending..." : "Send Message"}
                 </Button>
               </form>
             </CardContent>
@@ -99,62 +135,57 @@ const Contact = () => {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Restaurant Information</CardTitle>
+                <CardTitle className="flex items-center">
+                  <MapPin className="h-5 w-5 text-orange-600 mr-2" />
+                  Location
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <MapPin className="h-5 w-5 text-orange-600 mt-1" />
-                  <div>
-                    <h3 className="font-semibold">Address</h3>
-                    <p className="text-gray-600">
-                      123 Ethiopian Street<br />
-                      Cultural District<br />
-                      City, State 12345
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <Phone className="h-5 w-5 text-orange-600 mt-1" />
-                  <div>
-                    <h3 className="font-semibold">Phone</h3>
-                    <p className="text-gray-600">+1 (555) 123-4567</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <Mail className="h-5 w-5 text-orange-600 mt-1" />
-                  <div>
-                    <h3 className="font-semibold">Email</h3>
-                    <p className="text-gray-600">info@addiskitchen.com</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <Clock className="h-5 w-5 text-orange-600 mt-1" />
-                  <div>
-                    <h3 className="font-semibold">Hours</h3>
-                    <div className="text-gray-600">
-                      <p>Monday - Thursday: 11AM - 10PM</p>
-                      <p>Friday - Saturday: 11AM - 11PM</p>
-                      <p>Sunday: 12PM - 9PM</p>
-                    </div>
-                  </div>
-                </div>
+              <CardContent>
+                <p className="text-gray-600">
+                  123 Ethiopian Street<br />
+                  Cultural District<br />
+                  City, State 12345
+                </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Find Us</CardTitle>
+                <CardTitle className="flex items-center">
+                  <Phone className="h-5 w-5 text-orange-600 mr-2" />
+                  Phone
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="aspect-video bg-gray-200 rounded-lg flex items-center justify-center">
-                  <p className="text-gray-500">Interactive Map Coming Soon</p>
+                <p className="text-gray-600">+1 (555) 123-4567</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Mail className="h-5 w-5 text-orange-600 mr-2" />
+                  Email
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">info@addiskitchen.com</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Clock className="h-5 w-5 text-orange-600 mr-2" />
+                  Hours
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-gray-600">
+                  <p>Monday - Thursday: 11:00 AM - 10:00 PM</p>
+                  <p>Friday - Saturday: 11:00 AM - 11:00 PM</p>
+                  <p>Sunday: 12:00 PM - 9:00 PM</p>
                 </div>
-                <p className="text-sm text-gray-600 mt-4">
-                  We're located in the heart of the Cultural District, with easy access to public transportation and parking available nearby.
-                </p>
               </CardContent>
             </Card>
           </div>
